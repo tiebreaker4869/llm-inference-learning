@@ -6,13 +6,14 @@ import regex as re
 class BPETokenizerParams:
     """All params needed to specify a bpe tokenizer."""
     vocab: dict[int, bytes] # index -> bytes
-    merges: dict[tuple[int, int], int] # index1, index2 -> new_index
+    merges: list[tuple[int, int], int] # index1, index2 -> new_index
     special_tokens: list[str] | None
     
 class BPETokenizer(Tokenizer):
     def __init__(self, params: BPETokenizerParams):
         self.params = params
-        self.special_tokens_regex = re.escape("|").join(self.params.special_tokens)
+        self.bytes_to_token = {bs : idx for idx, bs in self.params.vocab.items()}
+        self.special_tokens_regex = re.escape("|").join(self.params.special_tokens) if self.params.special_tokens else ""
         self.special_token_to_idx = dict()
         if self.params.special_tokens:
             self._init_special_tokens()
@@ -33,13 +34,15 @@ class BPETokenizer(Tokenizer):
                 if part in self.special_token_to_idx:
                     indices.append(self.special_token_to_idx[part])
                 else:
-                    idxs = list(map(int, part.encode("utf-8")))
-                    for pair, new_idx in self.params.merges.items():
+                    bs = part.encode("utf-8")
+                    bs_list = [bs[i:i+1] for i in range(len(bs))]
+                    idxs = [self.bytes_to_token[b] for b in bs_list]
+                    for pair, new_idx in self.params.merges:
                         idxs = self._merge(idxs, pair, new_idx)
                     indices.extend(idxs)
         return indices
     def decode(self, tokens: list[int]) -> str:
-        bytes_list = list(map(self.params.vocab.get, tokens))
+        bytes_list = [self.params.vocab.get(token) for token in tokens]
         string = b"".join(bytes_list).decode("utf-8")
         return string
     
