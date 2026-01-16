@@ -6,7 +6,7 @@ import regex as re
 class BPETokenizerParams:
     """All params needed to specify a bpe tokenizer."""
     vocab: dict[int, bytes] # index -> bytes
-    merges: list[tuple[int, int], int] # index1, index2 -> new_index
+    merges: list[tuple[bytes, bytes]]
     special_tokens: list[str] | None
     
 class BPETokenizer(Tokenizer):
@@ -17,12 +17,23 @@ class BPETokenizer(Tokenizer):
         self.special_token_to_idx = dict()
         if self.params.special_tokens:
             self._init_special_tokens()
+        self._init_merges()
+        
+    def _init_merges(self):
+        self.merges_idx: dict[tuple[int, int], int] = dict()
+        for b1, b2 in self.params.merges:
+            idx1, idx2 = self.bytes_to_token[b1], self.bytes_to_token[b2]
+            merge_idx = self.bytes_to_token[b1 + b2]
+            self.merges_idx[(idx1, idx2)] = merge_idx
+            
+        
 
     def _init_special_tokens(self):
         special_tokens_set = set(self.params.special_tokens)
+        special_tokens_set = set({t.encode("utf-8") for t in special_tokens_set})
         for token, bstring in self.params.vocab.items():
-            string = bstring.decode("utf-8")
-            if string in special_tokens_set:
+            if bstring in special_tokens_set:
+                string = bstring.decode("utf-8")
                 self.special_token_to_idx[string] = token
         
     def encode(self, string: str) -> list[int]:
@@ -30,6 +41,7 @@ class BPETokenizer(Tokenizer):
         indices = []
         for pretoken in pretokens:
             parts = re.split(self.special_tokens_regex, pretoken) if self.params.special_tokens else [pretoken]
+            print(list(parts))
             for part in parts:
                 if part in self.special_token_to_idx:
                     indices.append(self.special_token_to_idx[part])
@@ -37,7 +49,7 @@ class BPETokenizer(Tokenizer):
                     bs = part.encode("utf-8")
                     bs_list = [bs[i:i+1] for i in range(len(bs))]
                     idxs = [self.bytes_to_token[b] for b in bs_list]
-                    for pair, new_idx in self.params.merges:
+                    for pair, new_idx in self.merges_idx.items():
                         idxs = self._merge(idxs, pair, new_idx)
                     indices.extend(idxs)
         return indices
