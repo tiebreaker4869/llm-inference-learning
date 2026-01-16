@@ -28,6 +28,7 @@ class BPETokenizer(Tokenizer):
 
     def _init_special_tokens(self):
         escaped_tokens = [re.escape(st) for st in self.params.special_tokens]
+        escaped_tokens.sort(key = len, reverse = True)
         self.special_tokens_regex = "(" + "|".join(escaped_tokens) + ")"
         special_tokens_set = set(self.params.special_tokens)
         special_tokens_set = set({t.encode("utf-8") for t in special_tokens_set})
