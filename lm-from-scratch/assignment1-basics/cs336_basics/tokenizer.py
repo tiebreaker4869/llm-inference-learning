@@ -9,6 +9,7 @@ def pretokenize(string: str):
         yield string[match.start():match.end()]
 
 class Tokenizer(ABC):
+    @classmethod
     def from_files(cls, vocab_filepath: str, merges_filepath: str, special_tokens: list[str] | None = None):
         """
         Construct and return a tokenizer from a serialized vocabulary, a list of merges and a list of special tokens.

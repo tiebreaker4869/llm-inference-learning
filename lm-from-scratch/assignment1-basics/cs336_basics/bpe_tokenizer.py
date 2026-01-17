@@ -52,6 +52,7 @@ class BPETokenizer(Tokenizer):
                 string = bstring.decode("utf-8")
                 self.special_token_to_idx[string] = token
 
+    @classmethod
     def from_files(cls, vocab_filepath: str, merges_filepath: str, special_tokens: list[str] | None = None):
         vocab = dict()
         merges = []
