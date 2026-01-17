@@ -2,6 +2,7 @@ from .tokenizer import Tokenizer, pretokenize
 from dataclasses import dataclass
 import regex as re
 from typing import Iterable, Iterator
+import json
 
 @dataclass(frozen=True)
 class BPETokenizerParams:
@@ -52,7 +53,20 @@ class BPETokenizer(Tokenizer):
                 self.special_token_to_idx[string] = token
 
     def from_files(cls, vocab_filepath: str, merges_filepath: str, special_tokens: list[str] | None = None):
-        pass
+        vocab = dict()
+        merges = []
+        with open(vocab_filepath, mode="r") as f:
+            content = f.read()
+            vocab = json.loads(content)
+            vocab = {v: k.encode("utf-8") for k, v in vocab.items()}
+        with open(merges_filepath, mode="r") as f:
+            for line in f:
+                cleaned_line = line.strip()
+                if cleaned_line and len(cleaned_line.split(" ")) == 2:
+                    merges.append(tuple([s.encode("utf-8") for s in cleaned_line.split(" ")]))
+        params = BPETokenizerParams(vocab, merges, special_tokens)
+        tokenizer = BPETokenizer(params)
+        return tokenizer
         
     def encode(self, string: str) -> list[int]:
         splitted = re.split(self.special_tokens_regex, string) if self.special_tokens else [string]
